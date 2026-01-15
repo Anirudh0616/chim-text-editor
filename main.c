@@ -16,6 +16,7 @@ void enableRawMode(void){
     atexit(disableRawMode);
 
     struct termios raw = orig_termios;
+    raw.c_iflag &= ~(IXON);
     raw.c_lflag &= ~(ECHO | ICANON | ISIG); // remove Echo and canonical Mode
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
