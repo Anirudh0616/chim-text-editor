@@ -1,7 +1,15 @@
-# Chim -- The Chopped Vim
+# Chim -- Controlled Vim
 A text editor built from scratch in C. Real blood, sweat and tears. 
 
+Ctrl Key shortcuts like Emacs. 
 
-Why? 
+Fast movements and modes like vim.
 
-well why not?
+Feel the speed.
+
+
+### Some Shortcuts
+
+ctrl + q = Quit
+ctrl + i = Enter insert mode, Exit Normal Mode
+ctrl + c = Exit insert mode, Enter Normal Mode
