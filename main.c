@@ -62,6 +62,7 @@ struct editorConfig{
     int screenrows;
     int screencols;
     int numrows;
+    int mode; // 0 = Normal , 1 = insert
     erow *row;
     struct termios orig_termios;
 };
@@ -271,6 +272,7 @@ void editorDrawRows(struct abuf *ab){
                 abAppend(ab, "~", 1);
             }
         } else {
+
             int len = E.row[filerow].size - E.coloff;
             if (len < 0) len = 0;
             if (len > E.screencols) len = E.screencols;
@@ -294,6 +296,16 @@ void editorRefreshScreen(void){
     abAppend(&ab, "\x1b[H", 3); // put cursor at the top
 
     editorDrawRows(&ab);
+    // Show the current mode 
+    char modeS[10];
+    int modeShow;
+    if(E.mode == 0){
+        modeShow = snprintf(modeS, sizeof(modeS), "NORMAL");
+    } else {
+        modeShow = snprintf(modeS, sizeof(modeS), "INSERT");
+    }
+    abAppend(&ab, "\r\n", 2);
+    abAppend(&ab, modeS, modeShow);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy-E.rowoff+1, E.cx - E.coloff+1); // Terminal uses 1 indexstart value. How unfortunate
@@ -337,12 +349,18 @@ void editorMoveCursor(int key){
                 E.cx++;
             }
             break;
+    }
 
+    row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
+    int rowlen = row ? row->size : 0;
+    if(E.cx >=rowlen){
+        E.cx = rowlen;
     }
 }
 
 
 void editorProcessKeypress(void){
+    
     int c = editorReadKey();
 
     switch(c) {
@@ -351,19 +369,29 @@ void editorProcessKeypress(void){
             write(STDOUT_FILENO, "\x1b[H", 3); // put cursor at the top
             exit(0);
             break;
+        case CTRL_KEY('C'):
+            E.mode = 0;
+            break;
+        case CTRL_KEY('I'):
+            E.mode = 1;
+            break;
         case CTRL_KEY('D'):
-            {
-                int times = 10;
-                while(times--){
-                    editorMoveCursor(ARROW_DOWN);
+            if(E.mode == 0){
+                {
+                    int times = 10;
+                    while(times--){
+                        editorMoveCursor(ARROW_DOWN);
+                    }
                 }
             }
             break;
         case CTRL_KEY('U'):
-            {
-                int times = 10;
-                while(times--){
-                    editorMoveCursor(ARROW_UP);
+            if(E.mode == 0){
+                {
+                    int times = 10;
+                    while(times--){
+                        editorMoveCursor(ARROW_UP);
+                    }
                 }
             }
             break;
@@ -391,6 +419,10 @@ void editorProcessKeypress(void){
         case j_key:
         case k_key:
         case l_key:
+            if(E.mode == 0){
+                editorMoveCursor(c);
+            }
+            break;
         case ARROW_UP :
         case ARROW_DOWN:
         case ARROW_LEFT:
@@ -407,8 +439,10 @@ void initEditor(void){
     E.rowoff = 0;
     E.coloff = 0;
     E.row = NULL;
+    E.mode = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+    E.screenrows -= 2;
 }
 
 int main(int argc, char *argv[]){
