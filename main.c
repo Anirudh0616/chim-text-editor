@@ -69,6 +69,7 @@ struct editorConfig{
     int numrows;
     int mode; // 0 = Normal , 1 = insert
     erow *row;
+    char *filename;
     struct termios orig_termios;
 };
 
@@ -251,6 +252,8 @@ void editorAppendRow(char *s, size_t len){
 //
 
 void editorOpen(char *filename) {
+    free(E.filename);
+    E.filename = strdup(filename);
     FILE *fp = fopen(filename, "r");
     if(!fp) die("fopen");
 
@@ -342,6 +345,39 @@ void editorDrawRows(struct abuf *ab){
     }
 }
 
+void editorDrawStatusBar(struct abuf *ab){
+    abAppend(ab, "\x1b[7m", 4);
+    // Show the current mode 
+    char modeS[10];
+    int modeShow;
+    if(E.mode == 0){
+        modeShow = snprintf(modeS, sizeof(modeS), "NORMAL");
+    } else {
+        modeShow = snprintf(modeS, sizeof(modeS), "INSERT");
+    }
+    abAppend(ab, " ", 1);
+    abAppend(ab, modeS, modeShow);
+    // Show the file name
+    char fileName[20];
+    int filelen = snprintf(fileName, sizeof(fileName),"%.20s",E.filename ? E.filename : "[No Name]");
+    
+    // Show line number
+    char lineStats[10];
+    int lslen = snprintf(lineStats,sizeof(lineStats),"%d|%d",E.cy + 1, E.numrows);
+
+    // Draw bar
+    int len = modeShow;
+    while(len < E.screencols-filelen-lslen-2){
+        abAppend(ab, " ", 1);
+        len++;
+    }
+    abAppend(ab,fileName, filelen);
+    abAppend(ab," ",1);
+    abAppend(ab, lineStats, lslen);
+    //
+    abAppend(ab, "\x1b[m", 3);
+}
+
 void editorRefreshScreen(void){
 
     editorScroll();
@@ -352,16 +388,8 @@ void editorRefreshScreen(void){
     abAppend(&ab, "\x1b[H", 3); // put cursor at the top
 
     editorDrawRows(&ab);
-    // Show the current mode 
-    char modeS[10];
-    int modeShow;
-    if(E.mode == 0){
-        modeShow = snprintf(modeS, sizeof(modeS), "NORMAL");
-    } else {
-        modeShow = snprintf(modeS, sizeof(modeS), "INSERT");
-    }
     abAppend(&ab, "\r\n", 2);
-    abAppend(&ab, modeS, modeShow);
+    editorDrawStatusBar(&ab);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy-E.rowoff+1, E.rx - E.coloff+1); // Terminal uses 1 indexstart value. How unfortunate
@@ -421,9 +449,11 @@ void editorProcessKeypress(void){
 
     switch(c) {
         case CTRL_KEY('q'):
-            write(STDOUT_FILENO, "\x1b[2J", 4); // clear screen
-            write(STDOUT_FILENO, "\x1b[H", 3); // put cursor at the top
-            exit(0);
+            if(E.mode == 0){
+                write(STDOUT_FILENO, "\x1b[2J", 4); // clear screen
+                write(STDOUT_FILENO, "\x1b[H", 3); // put cursor at the top
+                exit(0);
+            }
             break;
         case CTRL_KEY('C'):
             E.mode = 0;
@@ -452,18 +482,42 @@ void editorProcessKeypress(void){
             }
             break;
 
+        case CTRL_KEY('A'):
+            if(E.mode == 0){
+                if(E.cy < E.numrows){
+                    E.cx = E.row[E.cy].size;
+                }
+                E.mode = 1;
+            }
+            break;
+        
+        case CTRL_KEY('G'):
+            if(E.mode == 0){
+                E.cy = 0;
+            }
+            break;
+
 
         case HOME_KEY:
             E.cx = 0;
             break;
         case END_KEY:
-            E.cx = E.screencols-1;
+            if(E.cy < E.numrows){
+                E.cx = E.row[E.cy].size;
+            }
             break;
 
 
         case PAGE_UP:
         case PAGE_DOWN:
             {
+                if (c==PAGE_UP) {
+                    E.cy = E.rowoff;
+                } else if (c== PAGE_DOWN){
+                    E.cy = E.rowoff+E.screenrows - 1;
+                    if (E.cy > E.numrows) E.cy = E.numrows;
+                }
+
                 int times = E.screenrows;
                 while(times--){
                     editorMoveCursor(c==PAGE_UP ? ARROW_UP : ARROW_DOWN);
@@ -496,6 +550,7 @@ void initEditor(void){
     E.rowoff = 0;
     E.coloff = 0;
     E.row = NULL;
+    E.filename= NULL;
     E.mode = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
