@@ -25,11 +25,6 @@
 
 
 enum editorKey{
-    h_key = 900,
-    j_key = 901,
-    k_key = 902,
-    l_key = 903,
-
     ARROW_LEFT = 1000,
     ARROW_RIGHT,
     ARROW_UP,
@@ -154,10 +149,6 @@ int editorReadKey(void) {
         return '\x1b';
     } else {
         switch(c){
-            case 'h': return h_key;
-            case 'j': return j_key;
-            case 'k': return k_key;
-            case 'l': return l_key;
             default: return c;
         }
     }
@@ -251,6 +242,26 @@ void editorAppendRow(char *s, size_t len){
 
     E.numrows++;
 }
+
+void editorRowInsertChar(erow *row, int at, int c){
+    if(at < 0 || at > row->size) at = row->size;
+    row->chars = realloc(row->chars, row->size + 2);
+    memmove(&row->chars[at+1], &row->chars[at], row->size - at + 1);
+    row->size++;
+    row->chars[at] = c;
+    editorUpdateRow(row);
+}
+
+
+// EDITOR OPERATIONS
+void editorInsertChar(int c){
+    if(E.cy == E.numrows){
+        editorAppendRow("", 0);
+    }
+    editorRowInsertChar(&E.row[E.cy], E.cx, c);
+    E.cx++;
+}
+
 
 // file input o/p
 //
@@ -436,25 +447,21 @@ void editorMoveCursor(int key){
     erow *row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
 
     switch(key){
-        case h_key:
         case ARROW_LEFT:
             if(E.cx!= 0){
                 E.cx--;
             }
             break;
-        case k_key:
         case ARROW_UP:
             if(E.cy != 0){
                 E.cy--;
             }
             break;
-        case j_key:
         case ARROW_DOWN:
             if(E.cy < E.numrows){
                 E.cy++;
             }
             break;
-        case l_key:
         case ARROW_RIGHT:
             if (row && E.cx < row->size-1){
                 E.cx++;
@@ -474,98 +481,111 @@ void editorProcessKeypress(void){
     
     int c = editorReadKey();
 
-    switch(c) {
-        case CTRL_KEY('q'):
-            if(E.mode == 0){
+    if(E.mode == 0){
+        switch(c) {
+            case CTRL_KEY('q'):
                 write(STDOUT_FILENO, "\x1b[2J", 4); // clear screen
                 write(STDOUT_FILENO, "\x1b[H", 3); // put cursor at the top
                 exit(0);
-            }
-            break;
-        case CTRL_KEY('C'):
-            E.mode = 0;
-            break;
-        case CTRL_KEY('I'):
-            E.mode = 1;
-            break;
-        case CTRL_KEY('D'):
-            if(E.mode == 0){
+                break;
+            case CTRL_KEY('I'):
+                E.mode = 1;
+                break;
+            case CTRL_KEY('D'):
                 {
                     int times = E.screenrows/2;
                     while(times--){
                         editorMoveCursor(ARROW_DOWN);
                     }
                 }
-            }
-            break;
-        case CTRL_KEY('U'):
-            if(E.mode == 0){
+                break;
+            case CTRL_KEY('U'):
                 {
                     int times = E.screenrows/2;
                     while(times--){
                         editorMoveCursor(ARROW_UP);
                     }
                 }
-            }
-            break;
+                break;
 
-        case CTRL_KEY('A'):
-            if(E.mode == 0){
+            case CTRL_KEY('A'):
+                {
+                    if(E.cy < E.numrows){
+                        E.cx = E.row[E.cy].size;
+                    }
+                    E.mode = 1;
+                }
+                break;
+            
+            case CTRL_KEY('G'):
+                if(E.mode == 0){
+                    E.cy = 0;
+                }
+                break;
+
+
+            case HOME_KEY:
+                E.cx = 0;
+                break;
+            case END_KEY:
                 if(E.cy < E.numrows){
                     E.cx = E.row[E.cy].size;
                 }
-                E.mode = 1;
-            }
-            break;
-        
-        case CTRL_KEY('G'):
-            if(E.mode == 0){
-                E.cy = 0;
-            }
-            break;
+                break;
 
 
-        case HOME_KEY:
-            E.cx = 0;
-            break;
-        case END_KEY:
-            if(E.cy < E.numrows){
-                E.cx = E.row[E.cy].size;
-            }
-            break;
+            case PAGE_UP:
+            case PAGE_DOWN:
+                {
+                    if (c==PAGE_UP) {
+                        E.cy = E.rowoff;
+                    } else if (c== PAGE_DOWN){
+                        E.cy = E.rowoff+E.screenrows - 1;
+                        if (E.cy > E.numrows) E.cy = E.numrows;
+                    }
 
-
-        case PAGE_UP:
-        case PAGE_DOWN:
-            {
-                if (c==PAGE_UP) {
-                    E.cy = E.rowoff;
-                } else if (c== PAGE_DOWN){
-                    E.cy = E.rowoff+E.screenrows - 1;
-                    if (E.cy > E.numrows) E.cy = E.numrows;
+                    int times = E.screenrows;
+                    while(times--){
+                        editorMoveCursor(c==PAGE_UP ? ARROW_UP : ARROW_DOWN);
+                    }
                 }
+                break;
 
-                int times = E.screenrows;
-                while(times--){
-                    editorMoveCursor(c==PAGE_UP ? ARROW_UP : ARROW_DOWN);
-                }
-            }
-            break;
-
-        case h_key:
-        case j_key:
-        case k_key:
-        case l_key:
-            if(E.mode == 0){
+            case 'h':
+                editorMoveCursor(ARROW_LEFT);
+                break;
+            case 'j':
+                editorMoveCursor(ARROW_DOWN);
+                break;
+            case 'k':
+                editorMoveCursor(ARROW_UP);
+                break;
+            case 'l':
+                editorMoveCursor(ARROW_RIGHT);
+                break;
+            case ARROW_UP :
+            case ARROW_DOWN:
+            case ARROW_LEFT:
+            case ARROW_RIGHT:
                 editorMoveCursor(c);
-            }
-            break;
-        case ARROW_UP :
-        case ARROW_DOWN:
-        case ARROW_LEFT:
-        case ARROW_RIGHT:
-            editorMoveCursor(c);
-            break;
+                break;
+            // default:
+            //     {
+            //         if(E.mode==1){
+            //             editorInsertChar(c);
+            //         }
+            //     }
+            //     break;
+            
+        }
+
+    } else if (E.mode == 1){
+        if(c == CTRL_KEY('C')){
+            E.mode = 0;
+        } else {
+            editorInsertChar(c);
+        }
+
     }
 }
 
