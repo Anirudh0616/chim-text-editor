@@ -7,7 +7,7 @@ Fast movements and modes like vim.
 
 Feel the speed.
 
-### How to run 
+## How to run 
 
 clone the files somwhere and cd into the repo, then
 
@@ -25,15 +25,13 @@ or you can just run main, to see our landing screen.
 ```
 
 
-### Some Shortcuts
+## Some Shortcuts
 
-While in Normal Mode : 
+### While in Normal Mode
 
 ctrl + q = Quit
 
 ctrl + i = Enter insert mode, Exit Normal Mode
-
-ctrl + c = Exit insert mode, Enter Normal Mode
 
 ctrl + a = Go to the end of the line, and go to insert mode
 
@@ -43,3 +41,6 @@ ctrl + u = scroll up half a page
 
 ctrl + g = go to the top of the file
 
+### While in Insert Mode
+
+ctrl + c = Exit insert mode, Enter Normal Mode
