@@ -10,9 +10,11 @@
 #include <errno.h>
 #include <stdlib.h> // for atexit()
 #include <stdio.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <sys/ioctl.h>
 #include <string.h>
+#include <time.h>
 
 
 
@@ -70,6 +72,8 @@ struct editorConfig{
     int mode; // 0 = Normal , 1 = insert
     erow *row;
     char *filename;
+    char statusmsg[80];
+    time_t statusmsg_time;
     struct termios orig_termios;
 };
 
@@ -346,10 +350,11 @@ void editorDrawRows(struct abuf *ab){
 }
 
 void editorDrawStatusBar(struct abuf *ab){
-    abAppend(ab, "\x1b[7m", 4);
     // Show the current mode 
     char modeS[10];
     int modeShow;
+    abAppend(ab, "\x1b[1m", 4);
+    abAppend(ab, "\x1b[7m", 4);
     if(E.mode == 0){
         modeShow = snprintf(modeS, sizeof(modeS), "NORMAL");
     } else {
@@ -358,6 +363,8 @@ void editorDrawStatusBar(struct abuf *ab){
     abAppend(ab, " ", 1);
     abAppend(ab, modeS, modeShow);
     // Show the file name
+    abAppend(ab, "\x1b[m", 3);
+    abAppend(ab, "\x1b[7m", 4);
     char fileName[20];
     int filelen = snprintf(fileName, sizeof(fileName),"%.20s",E.filename ? E.filename : "[No Name]");
     
@@ -365,17 +372,28 @@ void editorDrawStatusBar(struct abuf *ab){
     char lineStats[10];
     int lslen = snprintf(lineStats,sizeof(lineStats),"%d|%d",E.cy + 1, E.numrows);
 
+    abAppend(ab," ",1);
+    abAppend(ab," ",1);
+    abAppend(ab,fileName, filelen);
     // Draw bar
     int len = modeShow;
-    while(len < E.screencols-filelen-lslen-2){
+    while(len < E.screencols-filelen-lslen-3){
         abAppend(ab, " ", 1);
         len++;
     }
-    abAppend(ab,fileName, filelen);
-    abAppend(ab," ",1);
     abAppend(ab, lineStats, lslen);
     //
     abAppend(ab, "\x1b[m", 3);
+    abAppend(ab, "\r\n",2);
+}
+
+void editorDrawMessageBar(struct abuf *ab){
+    abAppend(ab, "\x1b[K", 3);
+    int msglen = strlen(E.statusmsg);
+    if(msglen > E.screencols) msglen = E.screencols;
+    if(msglen && time(NULL) - E.statusmsg_time < 5){
+        abAppend(ab, E.statusmsg, msglen);
+    }
 }
 
 void editorRefreshScreen(void){
@@ -390,6 +408,7 @@ void editorRefreshScreen(void){
     editorDrawRows(&ab);
     abAppend(&ab, "\r\n", 2);
     editorDrawStatusBar(&ab);
+    editorDrawMessageBar(&ab);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy-E.rowoff+1, E.rx - E.coloff+1); // Terminal uses 1 indexstart value. How unfortunate
@@ -400,6 +419,14 @@ void editorRefreshScreen(void){
     write(STDOUT_FILENO, ab.b, ab.len);
     abFree(&ab);
 
+}
+
+void editorSetStatusMessage(const char * fmt, ...){
+    va_list ap;
+    va_start(ap,fmt);
+    vsnprintf(E.statusmsg, sizeof(E.statusmsg),fmt, ap);
+    va_end(ap);
+    E.statusmsg_time = time(NULL);
 }
 
 // INPUt
@@ -552,6 +579,8 @@ void initEditor(void){
     E.row = NULL;
     E.filename= NULL;
     E.mode = 0;
+    E.statusmsg[0] = '\0';
+    E.statusmsg_time = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
     E.screenrows -= 2;
@@ -565,6 +594,7 @@ int main(int argc, char *argv[]){
         editorOpen(argv[1]);
     }
 
+    editorSetStatusMessage("ctrl+q = quit");
 
     while (1){
         editorRefreshScreen();
