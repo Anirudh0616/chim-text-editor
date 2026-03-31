@@ -1,9 +1,11 @@
+#include <sys/fcntl.h>
 #define _DEFAULT_SOURCE
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h> // for atexit()
@@ -45,6 +47,8 @@ void die(const char* s)
 }
 
 // Editor row - stores line of text as pointer
+//
+void editorSetStatusMessage(const char* fmt, ...);
 
 typedef struct erow {
 	int size;
@@ -293,6 +297,26 @@ void editorInsertChar(int c)
 
 // file input o/p
 //
+char* editorRowsToString(int* buflen)
+{
+	int totlen = 0;
+	int j;
+	for (j = 0; j < E.numrows; j++) {
+		totlen += E.row[j].size + 1;
+		*buflen = totlen;
+	}
+
+	char* buf = malloc(*buflen);
+	char* p = buf;
+	for (j = 0; j < E.numrows; j++) {
+		memcpy(p, E.row[j].chars, E.row[j].size);
+		p += E.row[j].size;
+		*p = '\n';
+		p++;
+	}
+
+	return buf;
+}
 
 void editorOpen(char* filename)
 {
@@ -312,6 +336,30 @@ void editorOpen(char* filename)
 	}
 	free(line);
 	fclose(fp);
+}
+
+void editorSave(void)
+{
+	if (E.filename == NULL)
+		return;
+
+	int len;
+	char* buf = editorRowsToString(&len);
+
+	int fd = open(E.filename, O_RDWR | O_CREAT, 0644);
+	if (fd != -1) {
+		if (ftruncate(fd, len) != -1) {
+			if (write(fd, buf, len) == len) {
+				close(fd);
+				free(buf);
+				editorSetStatusMessage("\"%s\" %dL, %dB written", E.filename, E.numrows, len);
+				return;
+			}
+		}
+		close(fd);
+	}
+	free(buf);
+	editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
 // append buffer ( Dynamic String)
@@ -534,6 +582,9 @@ void editorProcessKeypress(void)
 			write(STDOUT_FILENO, "\x1b[2J", 4); // clear screen
 			write(STDOUT_FILENO, "\x1b[H", 3); // put cursor at the top
 			exit(0);
+			break;
+		case CTRL_KEY('w'):
+			editorSave();
 			break;
 		case CTRL_KEY('I'):
 			E.mode = 1;
