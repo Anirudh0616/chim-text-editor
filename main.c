@@ -526,6 +526,10 @@ void editorProcessKeypress(void)
 
 	if (E.mode == 0) {
 		switch (c) {
+		case '\r':
+			// Todo
+			break;
+
 		case CTRL_KEY('q'):
 			write(STDOUT_FILENO, "\x1b[2J", 4); // clear screen
 			write(STDOUT_FILENO, "\x1b[H", 3); // put cursor at the top
@@ -567,6 +571,11 @@ void editorProcessKeypress(void)
 			if (E.cy < E.numrows) {
 				E.cx = E.row[E.cy].size;
 			}
+			break;
+
+		case BACKSPACE:
+		// case CTRL_KEY('h'):
+		case DEL_KEY:
 			break;
 
 		case PAGE_UP:
@@ -613,7 +622,7 @@ void editorProcessKeypress(void)
 		}
 
 	} else if (E.mode == 1) {
-		if (c == CTRL_KEY('C')) {
+		if (c == CTRL_KEY('C') || c == '\x1b') {
 			E.mode = 0;
 		} else {
 			editorInsertChar(c);
