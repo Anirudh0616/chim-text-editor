@@ -19,6 +19,7 @@
 
 #define chim_version "0.0.1"
 #define chim_tab_stop 4
+#define chim_quit_times 2
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -67,6 +68,7 @@ struct editorConfig {
 	int numrows;
 	int mode; // 0 = Normal , 1 = insert
 	erow* row;
+	int dirty;
 	char* filename;
 	char statusmsg[80];
 	time_t statusmsg_time;
@@ -257,11 +259,13 @@ void editorUpdateRow(erow* row)
 }
 
 // new erow constructor
-void editorAppendRow(char* s, size_t len)
+void editorInsertRow(int at, char* s, size_t len)
 {
+	if (at < 0 || at > E.numrows)
+		return;
 	E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
+	memmove(&E.row[at + 1], &E.row[at], sizeof(erow) * (E.numrows - at));
 
-	int at = E.numrows;
 	E.row[at].size = len;
 	E.row[at].chars = malloc(len + 1);
 	memcpy(E.row[at].chars, s, len);
@@ -272,6 +276,23 @@ void editorAppendRow(char* s, size_t len)
 	editorUpdateRow(&E.row[at]);
 
 	E.numrows++;
+	E.dirty++;
+}
+
+void editorFreeRow(erow* row)
+{
+	free(row->render);
+	free(row->chars);
+}
+
+void editorDelRow(int at)
+{
+	if (at < 0 || at >= E.numrows)
+		return;
+	editorFreeRow(&E.row[at]);
+	memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.numrows - at - 1));
+	E.numrows--;
+	E.dirty++;
 }
 
 void editorRowInsertChar(erow* row, int at, int c)
@@ -283,16 +304,71 @@ void editorRowInsertChar(erow* row, int at, int c)
 	row->size++;
 	row->chars[at] = c;
 	editorUpdateRow(row);
+	E.dirty++;
+}
+
+void editorRowAppendString(erow* row, char* s, size_t len)
+{
+	row->chars = realloc(row->chars, row->size + len + 1);
+	memcpy(&row->chars[row->size], s, len);
+	row->size += len;
+	row->chars[row->size] = '\0';
+	editorUpdateRow(row);
+	E.dirty++;
+}
+
+void editorRowDelChar(erow* row, int at)
+{
+	if (at < 0 || at > row->size)
+		at = row->size;
+	memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+	row->size--;
+	editorUpdateRow(row);
+	E.dirty++;
 }
 
 // EDITOR OPERATIONS
 void editorInsertChar(int c)
 {
 	if (E.cy == E.numrows) {
-		editorAppendRow("", 0);
+		editorInsertRow(E.numrows, "", 0);
 	}
 	editorRowInsertChar(&E.row[E.cy], E.cx, c);
 	E.cx++;
+}
+
+void editorInsertNewLine(void)
+{
+	if (E.cx == 0) {
+		editorInsertRow(E.cy, "", 0);
+	} else {
+		erow* row = &E.row[E.cy];
+		editorInsertRow(E.cy + 1, &row->chars[E.cx], row->size - E.cx);
+		row = &E.row[E.cy]; // make sure the pointer is in the right spot
+		row->size = E.cx;
+		row->chars[row->size] = '\0';
+		editorUpdateRow(row);
+	}
+	E.cy++;
+	E.cx = 0;
+}
+
+void editorDelChar(void)
+{
+	if (E.cx == 0 && E.cy == 0)
+		return;
+	if (E.cy == E.numrows)
+		return;
+	erow* row = &E.row[E.cy];
+	if (E.cx > 0) {
+		editorRowDelChar(row, E.cx - 1);
+		E.cx--;
+	} else {
+		E.cx = E.row[E.cy - 1].size;
+		editorRowAppendString(&E.row[E.cy - 1], row->chars, row->size);
+		editorDelRow(E.cy);
+		E.cy--;
+	}
 }
 
 // file input o/p
@@ -332,10 +408,11 @@ void editorOpen(char* filename)
 	while ((linelen = getline(&line, &linecap, fp)) != -1) {
 		while ((linelen > 0 && (line[linelen - 1] == '\n')) || line[linelen - 1] == '\r')
 			linelen--;
-		editorAppendRow(line, linelen);
+		editorInsertRow(E.numrows, line, linelen);
 	}
 	free(line);
 	fclose(fp);
+	E.dirty = 0;
 }
 
 void editorSave(void)
@@ -352,6 +429,7 @@ void editorSave(void)
 			if (write(fd, buf, len) == len) {
 				close(fd);
 				free(buf);
+				E.dirty = 0;
 				editorSetStatusMessage("\"%s\" %dL, %dB written", E.filename, E.numrows, len);
 				return;
 			}
@@ -412,8 +490,7 @@ void editorDrawRows(struct abuf* ab)
 		if (filerow >= E.numrows) {
 			if (E.numrows == 0 && y == E.screenrows / 3) {
 				char welcome[80];
-				int welcomelen
-					= snprintf(welcome, sizeof(welcome), "Chim Editor -- version %s", chim_version);
+				int welcomelen = snprintf(welcome, sizeof(welcome), "Chim Editor -- version %s", chim_version);
 				if (welcomelen > E.screencols)
 					welcomelen = E.screencols;
 				int padding = (E.screencols - welcomelen) / 2;
@@ -463,8 +540,11 @@ void editorDrawStatusBar(struct abuf* ab)
 	abAppend(ab, "\x1b[m", 3);
 	abAppend(ab, "\x1b[7m", 4);
 	char fileName[20];
-	int filelen
-		= snprintf(fileName, sizeof(fileName), "%.20s", E.filename ? E.filename : "[No Name]");
+	int filelen = snprintf(fileName, sizeof(fileName), "%.20s", E.filename ? E.filename : "[No Name]");
+
+	// modified (dirty) indicator
+	char dirty[4];
+	int dirtylen = snprintf(dirty, sizeof(dirty), "%s", E.dirty ? "[+]" : "");
 
 	// Show line number
 	char lineStats[10];
@@ -473,9 +553,11 @@ void editorDrawStatusBar(struct abuf* ab)
 	abAppend(ab, " ", 1);
 	abAppend(ab, " ", 1);
 	abAppend(ab, fileName, filelen);
+	abAppend(ab, dirty, dirtylen);
+	abAppend(ab, " ", 1);
 	// Draw bar
 	int len = modeShow;
-	while (len < E.screencols - filelen - lslen - 3) {
+	while (len < E.screencols - filelen - lslen - 4 - dirtylen) {
 		abAppend(ab, " ", 1);
 		len++;
 	}
@@ -569,16 +651,22 @@ void editorMoveCursor(int key)
 
 void editorProcessKeypress(void)
 {
+	static int quit_times = chim_quit_times;
 
 	int c = editorReadKey();
 
 	if (E.mode == 0) {
 		switch (c) {
-		case '\r':
-			// Todo
+		case '\r': // enter
+			editorMoveCursor(ARROW_DOWN);
 			break;
 
 		case CTRL_KEY('q'):
+			if (E.dirty && quit_times) {
+				editorSetStatusMessage("File has unsaved changes, quit %d more times to force quit", quit_times);
+				quit_times--;
+				return;
+			}
 			write(STDOUT_FILENO, "\x1b[2J", 4); // clear screen
 			write(STDOUT_FILENO, "\x1b[H", 3); // put cursor at the top
 			exit(0);
@@ -624,9 +712,10 @@ void editorProcessKeypress(void)
 			}
 			break;
 
-		case BACKSPACE:
-		// case CTRL_KEY('h'):
+		case 'x':
 		case DEL_KEY:
+			editorMoveCursor(ARROW_RIGHT);
+			editorDelChar();
 			break;
 
 		case PAGE_UP:
@@ -646,6 +735,7 @@ void editorProcessKeypress(void)
 		} break;
 
 		case 'h':
+		case BACKSPACE:
 			editorMoveCursor(ARROW_LEFT);
 			break;
 		case 'j':
@@ -673,12 +763,25 @@ void editorProcessKeypress(void)
 		}
 
 	} else if (E.mode == 1) {
-		if (c == CTRL_KEY('C') || c == '\x1b') {
+		switch (c) {
+		case CTRL_KEY('c'):
+		case '\x1b':
 			E.mode = 0;
-		} else {
+			break;
+		case '\r':
+			editorInsertNewLine();
+			break;
+
+		case BACKSPACE:
+			editorDelChar();
+			break;
+
+		default:
 			editorInsertChar(c);
+			break;
 		}
 	}
+	quit_times = chim_quit_times;
 }
 
 void initEditor(void)
@@ -686,6 +789,7 @@ void initEditor(void)
 	E.cx = 0;
 	E.cy = 0;
 	E.rx = 0;
+	E.dirty = 0;
 	E.numrows = 0;
 	E.rowoff = 0;
 	E.coloff = 0;
