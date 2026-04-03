@@ -23,6 +23,18 @@
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
+int digitCounter(int n)
+{
+	if (n == 0)
+		return 1;
+	int c = 0;
+	while (n) {
+		c++;
+		n /= 10;
+	}
+	return c;
+}
+
 enum editorKey {
 	BACKSPACE = 127,
 	ARROW_LEFT = 1000,
@@ -60,6 +72,7 @@ typedef struct erow {
 } erow;
 
 struct editorConfig {
+	int numberGutter;
 	int cx, cy;
 	int rx;
 	int rowoff;
@@ -229,7 +242,7 @@ int editorRowCxToRx(erow* row, int cx)
 		}
 		rx++;
 	}
-	return rx;
+	return rx + E.numberGutter;
 }
 
 void editorUpdateRow(erow* row)
@@ -411,6 +424,8 @@ void editorOpen(char* filename)
 			linelen--;
 		editorInsertRow(E.numrows, line, linelen);
 	}
+	int s = digitCounter(E.numrows);
+	E.numberGutter = (s > 3 ? s : 3) + 1;
 	free(line);
 	fclose(fp);
 	E.dirty = 0;
@@ -518,6 +533,14 @@ void editorDrawRows(struct abuf* ab)
 				len = 0;
 			if (len > E.screencols)
 				len = E.screencols;
+			int s = digitCounter(filerow + 1);
+			for (int i = 0; i < E.numberGutter - s - 1; i++) {
+				abAppend(ab, " ", 1);
+			}
+			char lineNumber[10];
+			int lineNumberSize = snprintf(lineNumber, sizeof(lineNumber), "%d", filerow + 1);
+			abAppend(ab, lineNumber, lineNumberSize);
+			abAppend(ab, " ", 1);
 			abAppend(ab, &E.row[filerow].render[E.coloff], len);
 		}
 
@@ -588,6 +611,8 @@ void editorDrawMessageBar(struct abuf* ab)
 void editorRefreshScreen(void)
 {
 	editorScroll();
+	int s = digitCounter(E.numrows);
+	E.numberGutter = (3 > s ? 3 : s) + 1;
 
 	struct abuf ab = ABUF_INIT;
 
@@ -681,7 +706,7 @@ void editorMoveCursor(int key)
 
 	switch (key) {
 	case ARROW_LEFT:
-		if (E.cx != 0) {
+		if (E.cx) {
 			E.cx--;
 		}
 		break;
@@ -691,7 +716,7 @@ void editorMoveCursor(int key)
 		}
 		break;
 	case ARROW_DOWN:
-		if (E.cy < E.numrows) {
+		if (E.cy < E.numrows - 1) {
 			E.cy++;
 		}
 		break;
@@ -849,8 +874,8 @@ void editorProcessKeypress(void)
 
 void initEditor(void)
 {
-	E.cx = 0;
 	E.cy = 0;
+	E.cx = 0;
 	E.rx = 0;
 	E.dirty = 0;
 	E.numrows = 0;
@@ -864,6 +889,8 @@ void initEditor(void)
 
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
+	editorInsertRow(0, "", 0);
+	editorRefreshScreen();
 	E.screenrows -= 2;
 }
 
