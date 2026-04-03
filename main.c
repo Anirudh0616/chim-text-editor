@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 #define chim_version "0.0.1"
-#define chim_tab_stop 4
+#define chim_tab_stop 4 // tab stop width
 #define chim_quit_times 2
 
 #define CTRL_KEY(k) ((k) & 0x1f)
