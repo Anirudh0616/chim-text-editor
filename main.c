@@ -510,7 +510,7 @@ void editorDrawRows(struct abuf* ab)
 	for (y = 0; y < E.screenrows; y++) {
 		int filerow = y + E.rowoff;
 		if (filerow >= E.numrows) {
-			if (E.numrows == 0 && y == E.screenrows / 3) {
+			if (E.numrows == 1 && y == E.screenrows / 3) {
 				char welcome[80];
 				int welcomelen = snprintf(welcome, sizeof(welcome), "Chim Editor -- version %s", chim_version);
 				if (welcomelen > E.screencols)
