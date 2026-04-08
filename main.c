@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h> // for atexit()
 #include <string.h>
@@ -62,7 +63,9 @@ void die(const char* s)
 // Editor row - stores line of text as pointer
 //
 void editorSetStatusMessage(const char* fmt, ...);
-char* editorPrompt(char* prompt);
+char* editorPrompt(char* prompt, bool fromSave);
+void editorMoveCursor(int key);
+void editorInsertNewLine(void);
 
 typedef struct erow {
 	int size;
@@ -299,6 +302,23 @@ void editorFreeRow(erow* row)
 	free(row->chars);
 }
 
+void editorddRow(int at)
+{
+	if (at < 0 || at >= E.numrows)
+		return;
+	editorFreeRow(&E.row[at]);
+	memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.numrows - at - 1));
+	E.numrows--;
+	if (E.numrows <= 0) {
+		editorInsertRow(0, "", 0);
+		editorMoveCursor(ARROW_DOWN);
+		editorMoveCursor(ARROW_UP);
+	} else if (at >= E.numrows) {
+		editorMoveCursor(ARROW_UP);
+	}
+	E.dirty++;
+}
+
 void editorDelRow(int at)
 {
 	if (at < 0 || at >= E.numrows)
@@ -306,6 +326,13 @@ void editorDelRow(int at)
 	editorFreeRow(&E.row[at]);
 	memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.numrows - at - 1));
 	E.numrows--;
+	// if (E.numrows <= 0) {
+	// 	editorInsertRow(0, "", 0);
+	// 	editorMoveCursor(ARROW_DOWN);
+	// 	editorMoveCursor(ARROW_UP);
+	// } else if (at >= E.numrows) {
+	// 	editorMoveCursor(ARROW_UP);
+	// }
 	E.dirty++;
 }
 
@@ -435,7 +462,7 @@ void editorSave(void)
 {
 	if (E.filename == NULL) {
 
-		E.filename = editorPrompt("Save as: %s");
+		E.filename = editorPrompt("Save as: %s", true);
 		if (E.filename == NULL) {
 			editorSetStatusMessage("Save aborted");
 			return;
@@ -510,7 +537,7 @@ void editorDrawRows(struct abuf* ab)
 	for (y = 0; y < E.screenrows; y++) {
 		int filerow = y + E.rowoff;
 		if (filerow >= E.numrows) {
-			if (E.numrows == 1 && y == E.screenrows / 3) {
+			if (E.numrows <= 1 && y == E.screenrows / 3) {
 				char welcome[80];
 				int welcomelen = snprintf(welcome, sizeof(welcome), "Chim Editor -- version %s", chim_version);
 				if (welcomelen > E.screencols)
@@ -646,7 +673,7 @@ void editorSetStatusMessage(const char* fmt, ...)
 
 // INPUt
 
-char* editorPrompt(char* prompt)
+char* editorPrompt(char* prompt, bool fromSave)
 {
 	size_t bufsize = 128;
 	char* buf = malloc(bufsize);
@@ -654,47 +681,46 @@ char* editorPrompt(char* prompt)
 	size_t buflen = 0;
 	buf[0] = '\0';
 
-	if (strcmp(prompt, "d") == 0) {
-		while (1) {
-			editorSetStatusMessage("d", buf);
-			editorRefreshScreen();
-			int c = editorReadKey();
-			if (c == 'd') {
-				editorDelRow(E.cy);
-				editorSetStatusMessage("");
-				return NULL;
-			} else if (c == '\x1b' || c == CTRL_KEY('c')) {
-				editorSetStatusMessage("");
-				free(buf);
-				return NULL;
-			}
-		}
-	}
-
 	while (1) {
 		editorSetStatusMessage(prompt, buf);
 		editorRefreshScreen();
 
 		int c = editorReadKey();
-		if (c == BACKSPACE || c == DEL_KEY) {
-			if (buflen != 0)
-				buf[--buflen] = '\0';
-		} else if (c == '\x1b' || c == CTRL_KEY('c')) {
-			editorSetStatusMessage("");
-			free(buf);
-			return NULL;
-		} else if (c == '\r') {
-			if (buflen != 0) {
+		if (fromSave) {
+			if (c == BACKSPACE || c == DEL_KEY) {
+				if (buflen != 0)
+					buf[--buflen] = '\0';
+			} else if (c == '\x1b' || c == CTRL_KEY('c')) {
 				editorSetStatusMessage("");
-				return buf;
+				free(buf);
+				return NULL;
+			} else if (c == '\r') {
+				if (buflen != 0) {
+					editorSetStatusMessage("");
+					return buf;
+				}
+			} else if (!iscntrl(c) && c < 128) {
+				if (buflen == bufsize - 1) {
+					bufsize *= 2;
+					buf = realloc(buf, bufsize);
+				}
+				buf[buflen++] = c;
+				buf[buflen] = '\0';
 			}
-		} else if (!iscntrl(c) && c < 128) {
-			if (buflen == bufsize - 1) {
-				bufsize *= 2;
-				buf = realloc(buf, bufsize);
+		} else {
+			if (strcmp(prompt, "d") == 0) {
+				if (c == 'd') {
+					editorddRow(E.cy);
+				}
+			} else if (strcmp(prompt, "g") == 0) {
+				if (c == 'g') {
+					E.cy = 0;
+				}
+			} else if (c == '\x1b' || c == CTRL_KEY('c')) {
+				free(buf);
 			}
-			buf[buflen++] = c;
-			buf[buflen] = '\0';
+			editorSetStatusMessage("");
+			return NULL;
 		}
 	}
 }
@@ -746,7 +772,10 @@ void editorProcessKeypress(void)
 			editorMoveCursor(ARROW_DOWN);
 			break;
 		case 'd':
-			editorPrompt("d");
+			editorPrompt("d", false);
+			break;
+		case 'g':
+			editorPrompt("g", false);
 			break;
 
 		case CTRL_KEY('q'):
@@ -786,9 +815,7 @@ void editorProcessKeypress(void)
 		} break;
 
 		case CTRL_KEY('G'):
-			if (E.mode == 0) {
-				E.cy = 0;
-			}
+			E.cy = E.numrows - 1;
 			break;
 
 		case HOME_KEY:
@@ -889,7 +916,7 @@ void initEditor(void)
 
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
-	editorInsertRow(0, "", 0);
+	// editorInsertRow(0, "", 0);
 	editorRefreshScreen();
 	E.screenrows -= 2;
 }
@@ -901,6 +928,9 @@ int main(int argc, char* argv[])
 	initEditor();
 	if (argc >= 2) {
 		editorOpen(argv[1]);
+	} else {
+		editorInsertRow(0, "", 0);
+		E.dirty = 0;
 	}
 
 	editorSetStatusMessage("ctrl+q = quit");
