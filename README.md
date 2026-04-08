@@ -64,6 +64,15 @@ or you can just run main, to see our landing screen.
 
 ---
 
-### Latest Additions
+### Future Additions 
 
-Hello Line numbers!
+- [x] Vim Shortcuts
+- [x] Hello Line numbers!
+- []  Editor Search
+- []  Syntax Highlighting 
+- []  Visual Mode
+- []  Scripting Language
+
+---
+
+Made while bored in class.
