@@ -29,18 +29,45 @@ or you can just run main, to see our landing screen.
 
 ### While in Normal Mode
 
+h = move left
+
+j = move down
+
+k = move up
+
+l = move right
+
+ctrl + w = save
+
 ctrl + q = Quit
 
-ctrl + i = Enter insert mode, Exit Normal Mode
+i = Enter Insert mode
 
-ctrl + a = Go to the end of the line, and go to insert mode
+a = Enter Insert mode with append
+
+ctrl + i = Go to the START of the line, and go to insert mode
+
+ctrl + a = Go to the END of the line, and go to insert mode
 
 ctrl + d = scroll down half a page
 
 ctrl + u = scroll up half a page
 
-ctrl + g = go to the top of the file
+ctrl + g = go to the bottom of the file
+
+x = delete current character
+
+gg = go to the bottom of the file
+
+dd = delete current line
+
+dj = delete current line and line below 
+
+dk = delete current line and line above
+
 
 ### While in Insert Mode
 
 ctrl + c = Exit insert mode, Enter Normal Mode
+
+Esc = exit insert mode
