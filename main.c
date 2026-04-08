@@ -420,8 +420,8 @@ char* editorRowsToString(int* buflen)
 	int j;
 	for (j = 0; j < E.numrows; j++) {
 		totlen += E.row[j].size + 1;
-		*buflen = totlen;
 	}
+	*buflen = totlen;
 
 	char* buf = malloc(*buflen);
 	char* p = buf;
@@ -711,6 +711,15 @@ char* editorPrompt(char* prompt, bool fromSave)
 			if (strcmp(prompt, "d") == 0) {
 				if (c == 'd') {
 					editorddRow(E.cy);
+				} else if (c == 'j') {
+					int at = E.cy;
+					editorddRow(E.cy);
+					editorddRow(at);
+				} else if (c == 'k') {
+					editorMoveCursor(ARROW_UP);
+					int at = E.cy;
+					editorddRow(E.cy);
+					editorddRow(at);
 				}
 			} else if (strcmp(prompt, "g") == 0) {
 				if (c == 'g') {
@@ -718,8 +727,11 @@ char* editorPrompt(char* prompt, bool fromSave)
 				}
 			} else if (c == '\x1b' || c == CTRL_KEY('c')) {
 				free(buf);
+				editorSetStatusMessage("");
+				return NULL;
 			}
 			editorSetStatusMessage("");
+			free(buf);
 			return NULL;
 		}
 	}
@@ -756,7 +768,7 @@ void editorMoveCursor(int key)
 	row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
 	int rowlen = row ? row->size : 0;
 	if (E.cx >= rowlen) {
-		E.cx = rowlen;
+		E.cx = rowlen > 0 ? rowlen - 1 : 0;
 	}
 }
 
@@ -791,7 +803,13 @@ void editorProcessKeypress(void)
 		case CTRL_KEY('w'):
 			editorSave();
 			break;
-		case CTRL_KEY('I'):
+		case 'i':
+			E.mode = 1;
+			break;
+		case 'a':
+			if (E.cy < E.numrows && E.cx < E.row[E.cy].size) {
+				E.cx++;
+			}
 			E.mode = 1;
 			break;
 		case CTRL_KEY('D'): {
@@ -805,6 +823,11 @@ void editorProcessKeypress(void)
 			while (times--) {
 				editorMoveCursor(ARROW_UP);
 			}
+		} break;
+
+		case CTRL_KEY('I'): {
+			E.cx = 0;
+			E.mode = 1;
 		} break;
 
 		case CTRL_KEY('A'): {
@@ -881,6 +904,9 @@ void editorProcessKeypress(void)
 		switch (c) {
 		case CTRL_KEY('c'):
 		case '\x1b':
+			if (E.cx > 0) {
+				E.cx--;
+			}
 			E.mode = 0;
 			break;
 		case '\r':
@@ -917,8 +943,8 @@ void initEditor(void)
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
 	// editorInsertRow(0, "", 0);
-	editorRefreshScreen();
 	E.screenrows -= 2;
+	editorRefreshScreen();
 }
 
 int main(int argc, char* argv[])
