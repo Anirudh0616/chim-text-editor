@@ -66,12 +66,12 @@ or you can just run main, to see our landing screen.
 
 ### Future Additions 
 
-- [x] Vim Shortcuts
-- [x] Hello Line numbers!
-- []  Editor Search
-- []  Syntax Highlighting 
-- []  Visual Mode
-- []  Scripting Language
+-[x] Vim Shortcuts
+-[x] Hello Line numbers!
+-[]  Editor Search
+-[]  Syntax Highlighting 
+-[]  Visual Mode
+-[]  Scripting Language
 
 ---
 
