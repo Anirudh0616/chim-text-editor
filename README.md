@@ -7,6 +7,8 @@ Fast movements and modes like vim.
 
 Feel the speed.
 
+---
+
 ## How to run 
 
 clone the files somwhere and cd into the repo, then
@@ -24,6 +26,7 @@ or you can just run main, to see our landing screen.
 ./main
 ```
 
+---
 
 ## Some Shortcuts
 
@@ -71,3 +74,9 @@ dk = delete current line and line above
 ctrl + c = Exit insert mode, Enter Normal Mode
 
 Esc = exit insert mode
+
+---
+
+### Latest Additions
+
+Hello Line numbers!
