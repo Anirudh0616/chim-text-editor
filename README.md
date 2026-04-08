@@ -27,53 +27,40 @@ or you can just run main, to see our landing screen.
 ```
 
 ---
-
 ## Some Shortcuts
 
 ### While in Normal Mode
 
-h = move left
+| Shortcut     | Action                                                |
+|--------------|-------------------------------------------------------|
+| h            | move left                                             |
+| j            | move down                                             |
+| k            | move up                                               |
+| l            | move right                                            |
+| ctrl + w     | save                                                  |
+| ctrl + q     | Quit                                                  |
+| i            | Enter Insert mode                                     |
+| a            | Enter Insert mode with append                         |
+| ctrl + i     | Go to the START of the line, and go to insert mode    |
+| ctrl + a     | Go to the END of the line, and go to insert mode      |
+| ctrl + d     | scroll down half a page                               |
+| ctrl + u     | scroll up half a page                                 |
+| ctrl + g     | go to the bottom of the file                          |
+| x            | delete current character                              |
+| gg           | go to the bottom of the file                          |
+| dd           | delete current line                                   |
+| dj           | delete current line and line below                    |
+| dk           | delete current line and line above                    |
 
-j = move down
-
-k = move up
-
-l = move right
-
-ctrl + w = save
-
-ctrl + q = Quit
-
-i = Enter Insert mode
-
-a = Enter Insert mode with append
-
-ctrl + i = Go to the START of the line, and go to insert mode
-
-ctrl + a = Go to the END of the line, and go to insert mode
-
-ctrl + d = scroll down half a page
-
-ctrl + u = scroll up half a page
-
-ctrl + g = go to the bottom of the file
-
-x = delete current character
-
-gg = go to the bottom of the file
-
-dd = delete current line
-
-dj = delete current line and line below 
-
-dk = delete current line and line above
-
+---
 
 ### While in Insert Mode
 
-ctrl + c = Exit insert mode, Enter Normal Mode
+| Shortcut | Action                                      |
+|----------|---------------------------------------------|
+| ctrl + c | Exit insert mode, Enter Normal Mode         |
+| Esc      | exit insert mode                            |
 
-Esc = exit insert mode
 
 ---
 
