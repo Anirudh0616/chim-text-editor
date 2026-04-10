@@ -3,6 +3,7 @@
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
+#include "options.h"
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -950,6 +951,9 @@ void initEditor(void)
 int main(int argc, char* argv[])
 {
 
+	if (handleOptions(argc, argv)) {
+		return 0;
+	}
 	enableRawMode();
 	initEditor();
 	if (argc >= 2) {

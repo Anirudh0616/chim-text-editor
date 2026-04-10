@@ -86,6 +86,7 @@ or you can just run chim, to see our landing screen.
 - [x] Vim Shortcuts
 - [x] Hello Line numbers!
 - [ ] Editor Search
+- [ ] More Options
 - [x] Homebrew tap
 - [ ] Syntax Highlighting 
 - [ ] Visual Mode
