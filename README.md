@@ -18,11 +18,14 @@ brew tap Anirudh0616/chim
 
 brew install
 ```
-Then you can simply run using
+Then you can simply run using 
 
 ```bash
 chim
 ```
+you can add the file path with a space after chim to open a file.
+
+---
 
 #### Build it yourself 
 clone the files somwhere and cd into the repo, then
@@ -32,12 +35,12 @@ make
 ```
 
 ```bash
-./main [filename]
+./chim [filename]
 ```
 
-or you can just run main, to see our landing screen.
+or you can just run chim, to see our landing screen.
 ```bash
-./main
+./chim
 ```
 
 ---
@@ -82,10 +85,11 @@ or you can just run main, to see our landing screen.
 
 - [x] Vim Shortcuts
 - [x] Hello Line numbers!
-- [ ]  Editor Search
-- [ ]  Syntax Highlighting 
-- [ ]  Visual Mode
-- [ ]  Scripting Language
+- [ ] Editor Search
+- [x] Homebrew tap
+- [ ] Syntax Highlighting 
+- [ ] Visual Mode
+- [ ] Scripting Language
 
 ---
 
