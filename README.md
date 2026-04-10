@@ -9,8 +9,22 @@ Feel the speed.
 
 ---
 
-## How to run 
+## How to Install
 
+#### Using Homebrew (macOS)
+
+```bash
+brew tap Anirudh0616/chim
+
+brew install
+```
+Then you can simply run using
+
+```bash
+chim
+```
+
+#### Build it yourself 
 clone the files somwhere and cd into the repo, then
 
 ```bash
