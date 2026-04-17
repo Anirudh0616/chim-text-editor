@@ -68,6 +68,9 @@ or you can just run chim, to see our landing screen.
 | dd           | delete current line                                   |
 | dj           | delete current line and line below                    |
 | dk           | delete current line and line above                    |
+| o            | open a new line below and enter insert mode           |
+| O            | open a new line above and enter insert mode           |
+| z            | toggle Zen Mode (hide line numbers)                   |
 
 ---
 

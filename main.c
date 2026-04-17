@@ -77,6 +77,7 @@ typedef struct erow {
 
 struct editorConfig {
 	int numberGutter;
+	int zenMode;
 	int cx, cy;
 	int rx;
 	int rowoff;
@@ -561,14 +562,16 @@ void editorDrawRows(struct abuf* ab)
 				len = 0;
 			if (len > E.screencols)
 				len = E.screencols;
-			int s = digitCounter(filerow + 1);
-			for (int i = 0; i < E.numberGutter - s - 1; i++) {
+			if (!E.zenMode) {
+				int s = digitCounter(filerow + 1);
+				for (int i = 0; i < E.numberGutter - s - 1; i++) {
+					abAppend(ab, " ", 1);
+				}
+				char lineNumber[10];
+				int lineNumberSize = snprintf(lineNumber, sizeof(lineNumber), "%d", filerow + 1);
+				abAppend(ab, lineNumber, lineNumberSize);
 				abAppend(ab, " ", 1);
 			}
-			char lineNumber[10];
-			int lineNumberSize = snprintf(lineNumber, sizeof(lineNumber), "%d", filerow + 1);
-			abAppend(ab, lineNumber, lineNumberSize);
-			abAppend(ab, " ", 1);
 			abAppend(ab, &E.row[filerow].render[E.coloff], len);
 		}
 
@@ -638,9 +641,13 @@ void editorDrawMessageBar(struct abuf* ab)
 
 void editorRefreshScreen(void)
 {
+	if (E.zenMode) {
+		E.numberGutter = 0;
+	} else {
+		int s = digitCounter(E.numrows);
+		E.numberGutter = (3 > s ? 3 : s) + 1;
+	}
 	editorScroll();
-	int s = digitCounter(E.numrows);
-	E.numberGutter = (3 > s ? 3 : s) + 1;
 
 	struct abuf ab = ABUF_INIT;
 
@@ -886,6 +893,25 @@ void editorProcessKeypress(void)
 		case 'l':
 			editorMoveCursor(ARROW_RIGHT);
 			break;
+		case 'o': {
+			editorInsertRow(E.cy + 1, "", 0);
+			E.cy++;
+			E.cx = 0;
+			E.mode = 1;
+		} break;
+		case 'O': {
+			editorInsertRow(E.cy, "", 0);
+			E.cx = 0;
+			E.mode = 1;
+		} break;
+		case CTRL_KEY('z'): {
+			E.zenMode = !E.zenMode;
+			if (E.zenMode) {
+				editorSetStatusMessage("Chim: Inner Peace (Zen Mode On)");
+			} else {
+				editorSetStatusMessage("Chim: Back to Reality (Zen Mode Off)");
+			}
+		} break;
 		case ARROW_UP:
 		case ARROW_DOWN:
 		case ARROW_LEFT:
@@ -938,6 +964,7 @@ void initEditor(void)
 	E.row = NULL;
 	E.filename = NULL;
 	E.mode = 0;
+	E.zenMode = 0;
 	E.statusmsg[0] = '\0';
 	E.statusmsg_time = 0;
 
