@@ -535,7 +535,6 @@ void editorFindCallback(char* query, int key)
             last_match = current;
             E.cy = current;
 			E.cx = editorRowRxToCx(row, match - row->render);
-			E.rowoff = E.numrows;
 			break;
 		}
 	}
@@ -588,11 +587,11 @@ void editorScroll(void)
 		E.rx = editorRowCxToRx(&E.row[E.cy], E.cx);
 	}
 
-	if (E.cy < E.rowoff) {
-		E.rowoff = E.cy;
-	}
-	if (E.cy >= E.rowoff + E.screenrows) {
-		E.rowoff = E.cy - E.screenrows + 1;
+	if (E.cy < E.rowoff || E.cy >= E.rowoff + E.screenrows) {
+		E.rowoff = E.cy - (E.screenrows / 2);
+		if (E.rowoff < 0) E.rowoff = 0;
+		if (E.rowoff > E.numrows - E.screenrows) E.rowoff = E.numrows - E.screenrows;
+		if (E.rowoff < 0) E.rowoff = 0;
 	}
 	if (E.rx < E.coloff) {
 		E.coloff = E.rx;
