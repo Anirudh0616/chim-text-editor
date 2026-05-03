@@ -71,6 +71,18 @@ or you can just run chim, to see our landing screen.
 | o            | open a new line below and enter insert mode           |
 | O            | open a new line above and enter insert mode           |
 | z            | toggle Zen Mode (hide line numbers)                   |
+| /            | search                                                |
+
+---
+
+### While in Search Mode
+
+| Shortcut | Action                                      |
+|----------|---------------------------------------------|
+| ctrl + n | next match                                  |
+| ctrl + p | previous match                              |
+| Enter    | confirm search                              |
+| Esc      | cancel search                               |
 
 ---
 
@@ -88,7 +100,7 @@ or you can just run chim, to see our landing screen.
 
 - [x] Vim Shortcuts
 - [x] Hello Line numbers!
-- [ ] Editor Search
+- [x] Editor Search
 - [ ] More Options
 - [x] Homebrew tap
 - [ ] Syntax Highlighting 
