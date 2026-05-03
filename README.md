@@ -1,4 +1,4 @@
-# Chim -- Controlled Vim
+# Chim -- Controlled Vim (v0.1.4)
 A text editor built from scratch in C. Real blood, sweat and tears. 
 
 Ctrl Key shortcuts like Emacs. 
