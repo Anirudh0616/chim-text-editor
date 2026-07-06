@@ -1,4 +1,4 @@
-# Chim -- Controlled Vim (v0.1.4)
+# Chim -- Controlled Vim (v0.1.5)
 A text editor built from scratch in C. Real blood, sweat and tears. 
 
 Ctrl Key shortcuts like Emacs. 
@@ -103,7 +103,7 @@ or you can just run chim, to see our landing screen.
 - [x] Editor Search
 - [ ] More Options
 - [x] Homebrew tap
-- [ ] Syntax Highlighting 
+- [x] Syntax Highlighting 
 - [ ] Visual Mode
 - [ ] Scripting Language
 
